@@ -28,9 +28,13 @@ const Playlist = mongoose.model('Playlist');
 const SpotifyPlaylist = mongoose.model('SpotifyPlaylist');
 const User = mongoose.model('User');
 const SpotifyUser = mongoose.model('SpotifyUser')
+const SpotifyTrackCache = mongoose.model('SpotifyTrackCache')
 const Track = mongoose.model('Track')
 
-app.use(cors())
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true
+}))
 app.use(express.json());
 app.use(mongoSanitize());
 app.use(express.urlencoded({extended: true}))
@@ -67,6 +71,9 @@ function e(fn) {
 app.use(e(async (req, res, next) => {
     if(spotifyClient.isBadToken(req.session.client_access_token)) {
         req.session.client_access_token = await spotifyClient.getAccessTokenClient(req, res)
+    }
+    if(!req.session.recentlyContributed) {
+        req.session.recentlyContributed = {}
     }
     next();
 }))
@@ -106,7 +113,6 @@ app.get('/getplaylists/:loginToken', e(async (req, res) => {
     const isSpotifyUser = req.query.isSpotifyUser
     const loginToken = req.params.loginToken;
     if(isSpotifyUser == 'true') {
-        console.log(loginToken + "HELLO")
         res.redirect('/getplaylistsspotify?loginToken='+loginToken)
         return
     }
@@ -162,6 +168,16 @@ app.post('/createplaylist', e(async (req, res) => {
 
 app.post('/deleteplaylist', e(async (req, res) => {
     const user = await User.findOne({loginToken: req.body.loginToken}).populate('playlists')
+    if(!user) {
+        const spotifyPlaylist = await SpotifyPlaylist.findOne({playlistId: req.body.playlistId}).populate('owner')
+        if(spotifyPlaylist && spotifyPlaylist.owner.loginToken == req.body.loginToken) {
+            await SpotifyPlaylist.findOneAndDelete({playlistId: req.body.playlistId})
+            res.json({success: 'Success'})
+        } else {
+            res.json({error: 'Not the playlist owner.'})
+        }
+        return;
+    }
     for(const playlist of user.playlists) {
         if(playlist.playlistId == req.body.playlistId) {
             for(const track of playlist.tracks) {
@@ -193,7 +209,28 @@ app.post('/addsong', e(async (req, res) => {
     const newTrack = await Track.create({name: songName, artist: songArtist, uri: songUri, spotifyUrl: spotifyUrl, addedBy: addedBy})
     playlist.tracks.push(newTrack);
     playlist.save()
+    req.session.recentlyContributed[playlist.playlistId] = {
+        name: playlist.playlistName,
+        timestamp: Date.now()
+    }
+    req.session.save()
     res.json({success: 'Success'})
+}))
+
+app.get('/recentlycontributed', e(async (req, res) => {
+    const recentlyContributed = req.session.recentlyContributed || {}
+    const resp = []
+    for(const playlistId in recentlyContributed) {
+        const playlist = recentlyContributed[playlistId]
+        console.log(playlist)
+        const playlistName = playlist.name
+        const timestamp = playlist.timestamp
+        resp.push({playlistId: playlistId, playlistName: playlistName, timestamp: timestamp})
+    }
+    resp.sort((a,b) => {
+        return b.timestamp - a.timestamp
+    })
+    res.json(resp)
 }))
 
 ////////////////////////////
@@ -263,7 +300,6 @@ app.post('/createplaylistspotify', e(async (req, res) => {
         name: playlistName,
         description: "Made via theplaylistmaker.com"
     }, path)
-    console.log("RES", response)
     const playlistId = response.id
     const newPlaylist = await SpotifyPlaylist.create({
         playlistId: playlistId,
@@ -288,7 +324,6 @@ app.get('/getplaylistspotify', e(async (req, res) => {
         return
     }
     const response = await spotifyClient.querySpotifyGet(playlist.owner, `/playlists/${playlistId}`)
-    console.log(response)
     const tracks = response.tracks.items.map((val) => {
         const track = val.track
         return {
@@ -334,7 +369,6 @@ app.post('/addsongspotify', e(async (req,res) => {
         uris: [songUri]
     }, `/playlists/${playlistId}/tracks`)
 
-    console.log(playlist)
     if(!playlist.tracksMap) {
         playlist.tracksMap = {}
     }
@@ -344,25 +378,36 @@ app.post('/addsongspotify', e(async (req,res) => {
     playlist.tracksMap[songUri].push(addedBy)
     playlist.markModified('tracksMap')
     playlist.save()
+    req.session.recentlyContributed[playlist.playlistId] = {
+        name: playlist.playlistName,
+        timestamp: Date.now()
+    }
+    await req.session.save()
+    await SpotifyTrackCache.deleteMany({playlistId: playlist.playlistId})
     res.json(resp)
 }))
 
 app.get('/getplaylistsspotify', e(async (req, res) => {
     const loginToken = req.query.loginToken
     const user = await SpotifyUser.findOne({loginToken: loginToken}).populate('playlists')
-    console.log(user.playlists)
     res.json(user.playlists)
 }))
 
 app.get('/gettracksspotify', e(async (req, res) => {
     const offset = req.query.offset
     const limit = req.query.limit
-    console.log(limit, offset)
     const playlistId = req.query.playlistId
+    console.log(limit)
+    const cachedResp = await SpotifyTrackCache.findOne({playlistId: playlistId, offset: offset, limit: limit})
+    if(cachedResp) {
+        console.log("CACHE HIT")
+        res.json(cachedResp.tracks)
+        return
+    }
+    console.log("CACHE MISS")
     const playlist = await SpotifyPlaylist.findOne({playlistId: playlistId}).populate('owner')
     const url = `/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}`
     const resp = await spotifyClient.querySpotifyGet(playlist.owner, url)
-    console.log("RESP", resp)
     const tracks = resp.items.map((val) => {
         const track = val.track
         return {
@@ -387,7 +432,16 @@ app.get('/gettracksspotify', e(async (req, res) => {
             tracksMapClone[track.spotifyUri].shift()
         }
     }
-    console.log(tracks)
+    // don't want to cache the last bit, because it can change more frequently
+    console.log("TOTAL", resp.total)
+    if(limit + offset < resp.total) {
+        await SpotifyTrackCache.create({
+            offset: offset,
+            limit: limit,
+            tracks: tracks,
+            playlistId: playlistId
+        })
+    }
     res.json(tracks)
 }))
 

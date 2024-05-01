@@ -53,8 +53,23 @@ const SpotifyUser = new mongoose.Schema({
     loginToken: String
 })
 
+const SpotifyTrackCache = new mongoose.Schema({
+    playlistId: String,
+    tracks: [{
+        name: String,
+        spotifyUrl: String,
+        spotifyUri: String,
+        artist: String,
+        addedBy: String
+    }],
+    offset: Number,
+    limit: Number,
+    expireAt: { type: Date, default: new Date(), expires: 60*5 }
+})
+
 mongoose.model('Playlist', Playlist)
 mongoose.model('User', User)
 mongoose.model('Track', Track)
 mongoose.model('SpotifyUser', SpotifyUser)
 mongoose.model('SpotifyPlaylist', SpotifyPlaylist)
+mongoose.model('SpotifyTrackCache', SpotifyTrackCache)

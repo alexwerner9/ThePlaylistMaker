@@ -67,7 +67,6 @@ export function isBadToken(access_token) {
 }
 
 export async function refreshAccessToken(refreshToken) {
-    console.log("REFRESHING ACCESS TOKEN")
     return new Promise(async (resolve) => {
         const body =  querystring.stringify({
             grant_type: 'refresh_token',
@@ -104,7 +103,6 @@ export async function getAccessTokenUser(code) {
         const refreshToken = d.refresh_token
         const userId = d.user_id
 
-        console.log(Date.now() + (1000 * 60 * 30))
         const accessTokenObj = {
             accessToken: accessToken,
             refreshToken: refreshToken,
@@ -118,7 +116,6 @@ export async function getAccessTokenUser(code) {
 export async function querySpotifyPost(user, body, endpoint) {
     return new Promise(async (resolve, reject) => {
         if(user && new Date(user.expiresAt) <= Date.now()) {
-            console.log("EXPIRED")
             const res = await refreshAccessToken(user.refreshToken)
             user.accessToken = res.access_token
             user.refreshToken = res.refresh_token ? res.refresh_token : user.refreshToken
@@ -148,9 +145,7 @@ export async function querySpotifyPost(user, body, endpoint) {
 
 export async function querySpotifyGet(user, endpoint) {
     return new Promise(async (resolve, reject) => {
-        console.log(user, Date.now())
         if(user && new Date(user.expiresAt) <= Date.now()) {
-            console.log("EXPIRED")
             const res = await refreshAccessToken(user.refreshToken)
             user.accessToken = res.access_token
             user.refreshToken = res.refresh_token ? res.refresh_token : user.refreshToken
