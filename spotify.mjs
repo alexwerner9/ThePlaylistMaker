@@ -7,6 +7,7 @@ dotenv.config()
 
 const CLIENT_ID = process.env.CLIENT_ID
 const CLIENT_SECRET = process.env.CLIENT_SECRET
+const FRONTEND_HOST = process.env.FRONTEND_HOST
 
 export async function httpPost(authOptions, body) {
     return new Promise(async (resolve) => {
@@ -92,7 +93,7 @@ export async function getAccessTokenClient(req) {
 
 export async function getAccessTokenUser(code) {
     return new Promise(async (resolve) => {
-        const redirect_uri = 'http://localhost:5173/spotifycallback'
+        const redirect_uri = FRONTEND_HOST+'/spotifycallback'
         const data = querystring.stringify({
             code: code,
             redirect_uri: redirect_uri,

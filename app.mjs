@@ -14,11 +14,9 @@ import './db.mjs'
 import bcrypt from 'bcryptjs';
 
 const CLIENT_ID = process.env.CLIENT_ID
-const CLIENT_SECRET = process.env.CLIENT_SECRET
 const HOSTNAME = process.env.HOSTNAME
 const PROTOCOL = process.env.PROTOCOL
-const LISTEN_PORT = process.env.LISTEN_PORT
-const FRONTEND_PORT = process.env.FRONTEND_PORT
+const FRONTEND_HOST = process.env.FRONTEND_HOST
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -32,7 +30,7 @@ const SpotifyTrackCache = mongoose.model('SpotifyTrackCache')
 const Track = mongoose.model('Track')
 
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: FRONTEND_HOST,
     credentials: true
 }))
 app.use(express.json());
