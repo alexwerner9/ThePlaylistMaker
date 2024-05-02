@@ -178,7 +178,7 @@ export async function search(access_token, query) {
         const data = await querySpotifyGet(access_token, '/search?'+q)
         let tracks;
         try {
-            tracks = data['tracks']['items'].slice(0,15)
+            tracks = data['tracks']['items'].slice(0,10)
         } catch(e) {
             console.log("ERROR", data)
             resolve({error: e})

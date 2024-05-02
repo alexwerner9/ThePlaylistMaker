@@ -265,13 +265,13 @@ app.get('/registerspotify', e(async (req, res) => {
     const userId = userInfo.id
 
     const existingSpotifyUser = await SpotifyUser.findOne({userId: userId})
-    const loginToken = uuidv4();
+    let loginToken = uuidv4();
 
     if(existingSpotifyUser) {
+        loginToken = existingSpotifyUser.loginToken
         existingSpotifyUser.accessToken = accessToken
         existingSpotifyUser.refreshToken = refreshToken
         existingSpotifyUser.expiresAt = expiresAt
-        existingSpotifyUser.loginToken = loginToken
         existingSpotifyUser.save()
     } else {
         const newSpotifyUser = await SpotifyUser.create({
