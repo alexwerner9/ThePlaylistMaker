@@ -136,7 +136,13 @@ app.get('/getplaylist', e(async (req, res) => {
             return prev || curr.playlistId == playlistId
         }, false)
     }
-    res.json({playlist: playlist, isOwner: isOwner, type: 'tpm'})
+    const finalPlaylist = {
+        playlistId: playlist.playlistId,
+        playlistName: playlist.playlistName,
+        tracks: playlist.tracks,
+        numTracks: playlist.tracks.length
+    }
+    res.json({playlist: finalPlaylist, isOwner: isOwner, type: 'tpm'})
 }))
 
 app.get('/getusername/:loginToken', e(async (req, res) => {
