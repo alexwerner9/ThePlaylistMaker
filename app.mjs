@@ -140,7 +140,6 @@ app.get('/getplaylist', e(async (req, res) => {
         playlistId: playlist.playlistId,
         playlistName: playlist.playlistName,
         tracks: playlist.tracks,
-        numTracks: playlist.tracks.length
     }
     res.json({playlist: finalPlaylist, isOwner: isOwner, type: 'tpm'})
 }))
@@ -447,6 +446,11 @@ app.get('/gettracksspotify', e(async (req, res) => {
         })
     }
     res.json(tracks)
+}))
+
+
+app.get('/alexwerner/test', e(async (req, res) => {
+    res.json({result: 'success'})
 }))
 
 
