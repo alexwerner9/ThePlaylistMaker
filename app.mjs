@@ -30,7 +30,7 @@ const SpotifyTrackCache = mongoose.model('SpotifyTrackCache')
 const Track = mongoose.model('Track')
 
 app.use(cors({
-    origin: FRONTEND_HOST,
+    origin: [FRONTEND_HOST, 'https://alex-werner.com'],
     credentials: true
 }))
 app.use(express.json());
