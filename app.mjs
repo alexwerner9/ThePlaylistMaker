@@ -450,7 +450,7 @@ app.get('/gettracksspotify', e(async (req, res) => {
 
 
 app.get('/alexwerner/test', e(async (req, res) => {
-    res.json({result: 'success'})
+    res.json({result: 'Shelby is the cutest!'})
 }))
 
 
