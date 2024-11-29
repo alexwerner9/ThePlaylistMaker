@@ -36,6 +36,17 @@ const Track = new mongoose.Schema({
     spotifyId: String
 })
 
+const Leaderboard = new mongoose.Schema({
+    game: String,
+    scores: [
+        {
+            name: String,
+            score: Number,
+            date: String
+        }
+    ]
+})
+
 const User = new mongoose.Schema({
     playlists: [{type: mongoose.Schema.Types.ObjectId, ref: 'Playlist'}], // which playlists this user owns
     username: String,
@@ -73,3 +84,4 @@ mongoose.model('Track', Track)
 mongoose.model('SpotifyUser', SpotifyUser)
 mongoose.model('SpotifyPlaylist', SpotifyPlaylist)
 mongoose.model('SpotifyTrackCache', SpotifyTrackCache)
+mongoose.model('Leaderboard', Leaderboard)

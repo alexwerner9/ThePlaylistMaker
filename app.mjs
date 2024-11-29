@@ -17,6 +17,7 @@ const CLIENT_ID = process.env.CLIENT_ID
 const HOSTNAME = process.env.HOSTNAME
 const PROTOCOL = process.env.PROTOCOL
 const FRONTEND_HOST = process.env.FRONTEND_HOST
+const ALEXWERNER_FRONTEND_HOST = process.env.ALEXWERNER_FRONTEND_HOST
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -28,9 +29,10 @@ const User = mongoose.model('User');
 const SpotifyUser = mongoose.model('SpotifyUser')
 const SpotifyTrackCache = mongoose.model('SpotifyTrackCache')
 const Track = mongoose.model('Track')
+const Leaderboard = mongoose.model('Leaderboard')
 
 app.use(cors({
-    origin: [FRONTEND_HOST, 'https://alex-werner.com'],
+    origin: [FRONTEND_HOST, ALEXWERNER_FRONTEND_HOST],
     credentials: true
 }))
 app.use(express.json());
@@ -449,9 +451,53 @@ app.get('/gettracksspotify', e(async (req, res) => {
 }))
 
 
-app.get('/alexwerner/test', e(async (req, res) => {
-    res.json({result: 'Shelby is the cutest!'})
+app.get('/alexwerner/leaderboard', e(async (req, res) => {
+    const game = req.query.game
+    if(!['geodistance', 'wordstreak', 'history'].includes(game)) {
+        res.json({result: 'No such game: ' + game})
+        return
+    }
+    let leaderboard = await Leaderboard.findOne({game: game})
+    if(!leaderboard) {
+        leaderboard = await Leaderboard.create({game: game})
+    }
+    res.json(leaderboard)
 }))
+
+app.post('/alexwerner/leaderboard', e(async (req, res) => {
+    const game = req.body.game
+    if(!['geodistance', 'wordstreak', 'history'].includes(game)) {
+        res.json({result: 'No such game: ' + game})
+        return
+    }
+    let leaderboard = await Leaderboard.findOne({game: game})
+    if(!leaderboard) {
+        leaderboard = await Leaderboard.create({game: game})
+    }
+    const name = req.body.name
+    if(!name) {
+        res.json({result: "Not a valid name: " + name})
+        return
+    }
+    const score = req.body.score
+    if(!score) {
+        res.json({result: "Not a valid score: " + score})
+        return
+    }
+    const date = req.body.date
+    if(!date) {
+        res.json({result: "Not a valid date: " + date});
+    }
+    leaderboard.scores.push(
+        {
+            name: name,
+            score: score,
+            date: date
+        }
+    )
+    leaderboard.save()
+    res.json({result: "success"})
+}));
 
 
 app.listen(process.env.PORT || 3000);
